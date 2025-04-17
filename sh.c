@@ -53,6 +53,86 @@ int fork1(void);  // Fork but panics on failure.
 void panic(char*);
 struct cmd *parsecmd(char*);
 
+void
+runcmd(struct cmd *cmd)
+{
+  int p[2];
+  struct backcmd *bcmd;
+  struct execcmd *ecmd;
+  struct listcmd *lcmd;
+  struct pipecmd *pcmd;
+  struct redircmd *rcmd;
+
+  if(cmd == 0)
+    exit();
+
+  switch(cmd->type){
+  default:
+    panic("runcmd");
+
+  case EXEC:
+    ecmd = (struct execcmd*)cmd;
+    if(ecmd->argv[0] == 0)
+      exit();
+    exec(ecmd->argv[0], ecmd->argv);
+    printf(2, "exec %s failed\n", ecmd->argv[0]);
+    break;
+
+  case LIST:
+    // Multiple commands in the same line (cmd1 ; cmd2)
+    lcmd = (struct listcmd*)cmd;
+    if (fork1() == 0){
+      runcmd(lcmd->left);  // execute 1st
+    }
+    wait();
+    runcmd(lcmd->right);    // execute 2nd
+    break;
+
+  case PIPE:
+    // Piped commands (cmd1 | cmd2)
+    pcmd = (struct pipecmd*)cmd;
+    if(pipe(p) < 0){
+      panic("pipe");
+    }
+    // 1st child: execute left one -> write to pipe
+    if(fork1() == 0){
+      close(1);      
+      dup(p[1]);     
+      close(p[0]);   
+      close(p[1]);
+      runcmd(pcmd->left);
+    }
+
+    // 2nd child: read from pipe -> execute right one
+    if(fork1() == 0){
+      close(0);      
+      dup(p[0]);     
+      close(p[1]);   
+      close(p[0]);
+      runcmd(pcmd->right);
+    }
+    // close both pipes and wait
+    close(p[0]);
+    close(p[1]);
+    wait();
+    wait();
+    break;
+
+  case REDIR:
+    printf(2, "Redirection Not Implemented\n");
+    break;
+
+  case BACK:
+    printf(2, "Backgrounding not implemented\n");
+    break;
+  }
+
+  exit();
+}
+
+
+
+/* This is original runcmd code, in case there's any error occuring.
 // Execute cmd.  Never returns.
 void
 runcmd(struct cmd *cmd)
@@ -97,7 +177,7 @@ runcmd(struct cmd *cmd)
   }
   exit();
 }
-
+*/
 int
 getcmd(char *buf, int nbuf)
 {
