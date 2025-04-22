@@ -131,7 +131,7 @@ runcmd(struct cmd *cmd)
     if ( child < 0 ) exit();
     if ( child == 0 ) {
       int grandchild = fork1();
-      if ( granchild < 0 ) exit();
+      if ( grandchild < 0 ) exit();
       if ( grandchild == 0 ) {
         runcmd( bcmd->cmd );
         exit();
