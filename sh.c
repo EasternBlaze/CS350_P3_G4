@@ -119,11 +119,26 @@ runcmd(struct cmd *cmd)
     break;
 
   case REDIR:
-    printf(2, "Redirection Not Implemented\n");
+    rcmd = ( struct redircmd* ) cmd;
+    close( rcmd->fd );
+    if ( open( rcmd->file, rcmd->mode ) < 0 ) exit();
+    runcmd( rcmd->cmd );
     break;
 
   case BACK:
-    printf(2, "Backgrounding not implemented\n");
+    bcmd = ( struct backcmd* ) cmd;
+    int child = fork1();
+    if ( child < 0 ) exit();
+    if ( child == 0 ) {
+      int grandchild = fork1();
+      if ( granchild < 0 ) exit();
+      if ( grandchild == 0 ) {
+        runcmd( bcmd->cmd );
+        exit();
+      }
+      exit();
+    }
+    wait();
     break;
   }
 
