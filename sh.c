@@ -127,12 +127,8 @@ runcmd(struct cmd *cmd)
 
   case BACK:
     bcmd = ( struct backcmd* ) cmd;
-    int child = fork1();
-    if ( child < 0 ) exit();
-    if ( child == 0 ) {
-      int grandchild = fork1();
-      if ( grandchild < 0 ) exit();
-      if ( grandchild == 0 ) {
+    if ( fork1() == 0 ) {
+      if ( fork1() == 0 ) {
         runcmd( bcmd->cmd );
         exit();
       }
