@@ -11,7 +11,42 @@
 #define LIST  4
 #define BACK  5
 
+// I assume this is for history.
 #define MAXARGS 10
+//declaration of history
+char *history[MAXARGS];
+int histCount = 0;
+
+int isHist(char *cmd){
+  return cmd [0] == 'h' && cmd [1] == 'i' && cmd [2] == 's' && cmd [3] == 't';
+}
+
+void addHist(char *cmd){
+  int len = strlen(cmd);
+  if(len > 0 && cmd[len - 1] == '\n'){
+    cmd[len - 1] = '\0';
+  }
+  if(len == 0 || isHist(cmd)){
+    return;
+  }
+  char *copy = malloc(len + 1);
+  strcpy(copy, cmd);
+
+  if(histCount < MAXARGS){
+    history[histCount++] = copy;
+  }
+  else{
+    free(history[0]);
+    for(int i = 1; i < MAXARGS; i++){
+      history[i-1] = history[i];
+    }
+    history[MAXARGS - 1] = copy;
+  }
+}
+
+
+
+
 
 struct cmd {
   int type;
@@ -74,7 +109,29 @@ runcmd(struct cmd *cmd)
     ecmd = (struct execcmd*)cmd;
     if(ecmd->argv[0] == 0)
       exit();
+    // added for history
+    if(strcmp(ecmd->argv[0], "hist") == 0){
+      if(ecmd->argv[1] == 0 || strcmp(ecmd->argv[1], "print") == 0){
+        int line = 1;
+        for(int i = histCount - 1; i >= 0; i--){
+          printf(1, "Previous command is %d: %s\n", line++, history[i]);
+        }
+      }
+      else{
+        int index = atoi(ecmd->argv[1]);
+        if(index < 1 || index > histCount){
+          printf(2, "INVALID INDEX");
+        }
+        else{
+          char *cmdline = history[histCount - index];
+          runcmd(parsecmd(cmdline));
+        }
+      }
+      exit();
+    }
+    //finished adding
     exec(ecmd->argv[0], ecmd->argv);
+
     printf(2, "exec %s failed\n", ecmd->argv[0]);
     break;
 
@@ -226,6 +283,10 @@ main(void)
       if(chdir(buf+3) < 0)
         printf(2, "cannot cd %s\n", buf+3);
       continue;
+    }
+    // added for
+    if(!isHist(buf)){
+      addHist(buf);
     }
     if(fork1() == 0)
       runcmd(parsecmd(buf));
